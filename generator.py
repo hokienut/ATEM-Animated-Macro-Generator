@@ -1,4 +1,4 @@
-fps = 50
+fps = 30
 transition_seconds = 0.4
 
 frames = fps * transition_seconds
@@ -54,18 +54,32 @@ template = {
     },
 }
 
-def output_frames(math, boxes, i):
+MacroID = {
+    'size': 'SuperSourceV2BoxSize',
+    'xPosition': 'SuperSourceV2BoxXPosition',
+    'yPosition': 'SuperSourceV2BoxYPosition',    
+    'left': 'SuperSourceV2BoxMaskLeft',
+    'top': 'SuperSourceV2BoxMaskTop',
+    'right': 'SuperSourceV2BoxMaskRight',
+    'bottom': 'SuperSourceV2BoxMaskBottom',
+    'enable': 'SuperSourceV2BoxEnable',
+    'source': 'SuperSourceV2BoxInput',
+    'fillSource': 'SuperSourceV2ArtFillInput'
+    }
+
+# tab = '\t'
+tab = '    '
+def output_frames(boxes, i, method='linear'):
     output = ''
-    for b,item in boxes.items():
-        output = output.__add__(
-            f'            <Op id="SuperSourceV2BoxSize" superSource="0" boxIndex="{b}" size="{math[b]["size_func"](a["boxes"][b]["start"]["size"], math[b]["size_range"]/frames*i)}"/>\n'
-            f'            <Op id="SuperSourceV2BoxXPosition" superSource="0" boxIndex="{b}" xPosition="{math[b]["xpos_func"](a["boxes"][b]["start"]["xPosition"], math[b]["xpos_range"]/frames*i)}"/>\n'
-            f'            <Op id="SuperSourceV2BoxYPosition" superSource="0" boxIndex="{b}" yPosition="{math[b]["ypos_func"](a["boxes"][b]["start"]["yPosition"], math[b]["ypos_range"]/frames*i)}"/>\n'
-            f'            <Op id="SuperSourceV2BoxMaskLeft" superSource="0" boxIndex="{b}" left="{math[b]["left_func"](a["boxes"][b]["start"]["left"], math[b]["left_range"]/frames*i)}"/>\n'
-            f'            <Op id="SuperSourceV2BoxMaskTop" superSource="0" boxIndex="{b}" top="{math[b]["top_func"](a["boxes"][b]["start"]["top"], math[b]["top_range"]/frames*i)}"/>\n'
-            f'            <Op id="SuperSourceV2BoxMaskRight" superSource="0" boxIndex="{b}" right="{math[b]["right_func"](a["boxes"][b]["start"]["right"], math[b]["right_range"]/frames*i)}"/>\n'
-            f'            <Op id="SuperSourceV2BoxMaskBottom" superSource="0" boxIndex="{b}" bottom="{math[b]["bottom_func"](a["boxes"][b]["start"]["bottom"], math[b]["bottom_range"]/frames*i)}"/>\n'
-        )
+    for box_i, box in boxes.items():
+        for key in box['start']:
+            if i == 0:
+                newPos = box['start'][key]
+            elif 'end' in box:
+                newPos = interp(box['start'][key], box['end'][key], frames, i, method=method)
+            else:
+                continue
+            output += f'{tab*3}<Op id="{MacroID[key]}" superSource="0" boxIndex="{box_i}" {key}="{newPos:0.4f}"/>\n'
     return output
 
 def get_frame_range(frames,reverse):
@@ -73,129 +87,118 @@ def get_frame_range(frames,reverse):
         return reversed(range(0,int(frames)+1))
     return range(0,int(frames)+1)
         
+move_eqs = {
+    'linear':lambda x, a=2: x,
+    'eieo': lambda x, a=2: (x**a/(x**a + (1-x)**a)),
+    'ei': lambda x, a=2: x**a,
+    'eo': lambda x, a=2: 1-(1-x)**a
+}
+def interp(start, end, frames, i, method='linear'):
+    fun = move_eqs.get(method, lambda x: x)
 
-animations = []
-animations.append({
-    'start_name': 'Cam1',
+    return start + fun(i/frames) * (end - start)
+
+defaults = {
+    'start_name': 'ME2',
     'end_name': '2Box',
-    'fillSource': 'Color2',
-    'start_source':'Camera3',
+    'fillSource': 'ProdMed 2',
+    'start_source':'ME2',
     'end_source':'SuperSource',
     'boxes': {
         0:{
-            'source':'Camera2',
-            'start':{
-                'size':0.68,
-                'xPosition':-27,
-                'yPosition':0,
-                'left':0,
-                'top':0,
-                'right':0,
-                'bottom':0,
-                },
-            'end':{
-                'size':0.68,
-                'xPosition':-5.32,
-                'yPosition':0,
-                'left':0,
-                'top':0,
-                'right':0,
-                'bottom':0,
-                },    
+            'size':0.81,
+            'xPosition':7.44,
+            'yPosition':0,
+            'left':7,
+            'right':7,
+            'top':0,
+            'bottom':0,
+            },    
         },
         1:{
-            'source':'Camera3',
-            'start':{
-                'size':1.0,
-                'xPosition':0,
-                'yPosition':0,
-                'left':0,
-                'top':0,
-                'right':0,
-                'bottom':0,
-                },
-            'end':{
-                'size':0.68,
-                'xPosition':11,
-                'yPosition':0,
-                'left':8,
-                'top':0,
-                'right':8,
-                'bottom':0,
-                },  
+            'size':0.56,
+            'xPosition':-6.13,
+            'yPosition':0,
+            'left':2,
+            'top':0,
+            'right':2,
+            'bottom':0,
         }
+    }
+fullScreen = {
+    'size':1,
+    'xPosition':0,
+    'yPosition':0,
+    'left':0,
+    'right':0,
+    'top':0,
+    'bottom':0,
+    }
 
+animations = []
+animations.append({
+    'start_name': 'ME2',
+    'end_name': '2Box',
+    'fillSource': 'ProdMed 2',
+    'start_source':'ME2',
+    'end_source':'SuperSource',
+    'boxes':{
+        0:{
+            'source':'ME2',
+            'start':fullScreen,
+            'end':defaults['boxes'][0],    
+        },
+        1:{
+            'source':'ProdMed 1',
+            'start':defaults['boxes'][1],
+            'end':defaults['boxes'][1],  
+        }
     }
 })
 
 
 output = ''
+
 reverse = False
+macroNumber = 88
 for index, a in enumerate(animations):
-    for reverse in range(0,2):
-        if not reverse:
-            output += f'        <Macro index="{index}" name="{a["start_name"]} to {a["end_name"]}" description="">\n'
-        else:
-            output += f'        <Macro index="{index}" name="{a["end_name"]} to {a["start_name"]}" description="">\n'
+    for reverse in range(2):
+        name = ' --> '.join([x[key] for key in ['start_name', 'end_name']][::-2*reverse+1])
+        output += f'{tab*2}<Macro index="{macroNumber + index*2 + reverse}" name="{name}" description="">\n'
 
-        for x in range(0,3):
-            try:
-                output = output.__add__(
-                    f'            <Op id="SuperSourceV2BoxEnable" superSource="0" boxIndex="{x}" enable="True"/>\n'
-                    f'            <Op id="SuperSourceV2BoxInput" superSource="0" boxIndex="{x}" input="{a["boxes"][x]["source"]}"/>\n'
-                )
-            except KeyError:
-                output = output.__add__(
-                f'            <Op id="SuperSourceV2BoxEnable" superSource="0" boxIndex="{x}" enable="False"/>\n'
-                )
+        for x in range(0,4):
+            enable_flag = x in a['boxes']
+            f'{tab*3}<Op id="SuperSourceV2BoxEnable" superSource="0" boxIndex="{x}" enable="{enable_flag}"/>\n'
+            
+        for box_i, box in a['boxes'].items():
+            output += f'{tab*3}<Op id="SuperSourceV2BoxInput" superSource="0" boxIndex="{box_i}" input="{box["source"]}"/>\n'
 
-            output += f'            <Op id="SuperSourceV2ArtFillInput" superSource="0" input="{a["fillSource"]}"/>\n'
+        output += f'{tab*3}<Op id="SuperSourceV2ArtFillInput" superSource="0" input="{a["fillSource"]}"/>\n'
 
-        math = {}
-        for b,item in a['boxes'].items():
-            # print(b)
-            math[b] = dict()
-            math[b]['size_range'] = abs(item['start']['size'] - item['end']['size'])
-            math[b]['size_func'] = lambda a,b: a-b if item['start']['size'] > item['end']['size'] else a+b
-            math[b]['xpos_range'] = abs(item['start']['xPosition'] - item['end']['xPosition']) ## if item['start']['xPosition'] > item['end']['xPosition'] else item['start']['xPosition'] + item['end']['xPosition']
-            math[b]['xpos_func'] = lambda a,b: a-b if item['start']['xPosition'] > item['end']['xPosition'] else a+b
-            math[b]['ypos_range'] = abs(item['start']['yPosition'] - item['end']['yPosition']) ## if item['start']['yPosition'] > item['end']['yPosition'] else item['start']['yPosition'] + item['end']['yPosition']
-            math[b]['ypos_func'] = lambda a,b: a-b if item['start']['yPosition'] > item['end']['yPosition'] else a+b
-            math[b]['left_range'] = abs(item['start']['left'] - item['end']['left']) ## if item['start']['left'] > item['end']['left'] else item['start']['left'] + item['end']['left']
-            math[b]['left_func'] = lambda a,b: a-b if item['start']['left'] > item['end']['left'] else a+b
-            math[b]['top_range'] = abs(item['start']['top'] - item['end']['top']) ## if item['start']['top'] > item['end']['top'] else item['start']['top'] + item['end']['top']
-            math[b]['top_func'] = lambda a,b: a-b if item['start']['top'] > item['end']['top'] else a+b
-            math[b]['right_range'] = abs(item['start']['right'] - item['end']['right']) ## if item['start']['right'] > item['end']['right'] else item['start']['right'] + item['end']['right']
-            math[b]['right_func'] = lambda a,b: a-b if item['start']['right'] > item['end']['right'] else a+b
-            math[b]['bottom_range'] = abs(item['start']['bottom'] - item['end']['bottom']) ## if item['start']['bottom'] > item['end']['bottom'] else item['start']['bottom'] + item['end']['bottom']
-            math[b]['bottom_func'] = lambda a,b: a-b if item['start']['bottom'] > item['end']['bottom'] else a+b
-
-        # import pprint
-        # pprint.pprint(math)
-        for i in get_frame_range(frames,reverse):
-            output += output_frames(math,a['boxes'],i)
-            output = output.__add__(f'            <Op id="MacroSleep" frames="1"/>\n')
+        for i in  get_frame_range(frames,reverse):
+            output += output_frames(a['boxes'],i)
+            output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
 
             ## Change Sources
             if i == 0: #After ensuring that the initial frame has been set to avoid jumping around on frame 1. 
                 if not reverse:
-                    output = output.__add__(f'            <Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n')
+                    output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
                 else:
-                    output = output.__add__(f'            <Op id="ProgramInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n')
+                    output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
                     # Reset the SuperSource to the final position for preview if it's no longer in Program
                     if a["start_source"] != 'SuperSource':
-                        output += output_frames(math,a['boxes'],frames)
-                output = output.__add__(f'            <Op id="MacroSleep" frames="1"/>\n')
+                        output += output_frames(a['boxes'],frames)
+                output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
             
             if i == frames:
                 if not reverse:
-                    output = output.__add__(f'            <Op id="PreviewInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n')
+                    output += f'{tab*3}<Op id="PreviewInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
                 if reverse:
-                    output = output.__add__(f'            <Op id="PreviewInput" mixEffectBlockIndex="0" input="SuperSource"/>\n')
+                    output += f'{tab*3}<Op id="PreviewInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
 
-                output = output.__add__(f'            <Op id="MacroSleep" frames="1"/>\n')
+                output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
             
-        output += f'        </Macro>\n'
+        output += f'{tab*2}</Macro>\n'
 
-with open('export.xml','w') as f:
+with open('export2.xml','w') as f:
     f.write(output)
