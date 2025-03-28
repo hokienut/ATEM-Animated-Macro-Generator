@@ -88,7 +88,7 @@ def get_frame_range(frames,reverse):
     return range(0,int(frames)+1)
         
 move_eqs = {
-    'linear':lambda x, a=2: x,
+    'linear':lambda x, *args, **kwargs: x,
     'eieo': lambda x, a=2: (x**a/(x**a + (1-x)**a)),
     'ei': lambda x, a=2: x**a,
     'eo': lambda x, a=2: 1-(1-x)**a
@@ -113,8 +113,7 @@ defaults = {
             'right':7,
             'top':0,
             'bottom':0,
-            },    
-        },
+            },
         1:{
             'size':0.56,
             'xPosition':-6.13,
@@ -125,6 +124,7 @@ defaults = {
             'bottom':0,
         }
     }
+}
 fullScreen = {
     'size':1,
     'xPosition':0,
@@ -151,11 +151,10 @@ animations.append({
         1:{
             'source':'ProdMed 1',
             'start':defaults['boxes'][1],
-            'end':defaults['boxes'][1],  
+            # 'end':defaults['boxes'][1],  
         }
     }
 })
-
 
 output = ''
 
@@ -163,20 +162,20 @@ reverse = False
 macroNumber = 88
 for index, a in enumerate(animations):
     for reverse in range(2):
-        name = ' --> '.join([x[key] for key in ['start_name', 'end_name']][::-2*reverse+1])
+        name = ' --> '.join([a[key] for key in ['start_name', 'end_name']][::-2*reverse+1])
         output += f'{tab*2}<Macro index="{macroNumber + index*2 + reverse}" name="{name}" description="">\n'
 
         for x in range(0,4):
             enable_flag = x in a['boxes']
-            f'{tab*3}<Op id="SuperSourceV2BoxEnable" superSource="0" boxIndex="{x}" enable="{enable_flag}"/>\n'
-            
+            output += f'{tab*3}<Op id="SuperSourceV2BoxEnable" superSource="0" boxIndex="{x}" enable="{enable_flag}"/>\n'
+
         for box_i, box in a['boxes'].items():
             output += f'{tab*3}<Op id="SuperSourceV2BoxInput" superSource="0" boxIndex="{box_i}" input="{box["source"]}"/>\n'
 
         output += f'{tab*3}<Op id="SuperSourceV2ArtFillInput" superSource="0" input="{a["fillSource"]}"/>\n'
 
-        for i in  get_frame_range(frames,reverse):
-            output += output_frames(a['boxes'],i)
+        for i in  get_frame_range(frames, reverse):
+            output += output_frames(a['boxes'], i)
             output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
 
             ## Change Sources
@@ -187,7 +186,7 @@ for index, a in enumerate(animations):
                     output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
                     # Reset the SuperSource to the final position for preview if it's no longer in Program
                     if a["start_source"] != 'SuperSource':
-                        output += output_frames(a['boxes'],frames)
+                        output += output_frames(a['boxes'], frames)
                 output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
             
             if i == frames:
