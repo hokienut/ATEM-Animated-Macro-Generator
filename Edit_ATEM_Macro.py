@@ -111,7 +111,7 @@ def visualize_atem_macro2(frames):
             #     ax.add_patch(art)
                 
     ani = animation.FuncAnimation(fig, update, frames=len(frames), interval=1000/30, repeat_delay=2000)
-    plt.show()
+    # plt.show()
     return ani
         
 def addMacroPool(fp):
@@ -122,10 +122,13 @@ def addMacroPool(fp):
     return allLines
 
 if __name__ == '__main__':
-    fp = r'C:\Local Repo\ATEM-Animated-Macro-Generator\export_eo.xml'
+    # fp = r'C:\Local Repo\ATEM-Animated-Macro-Generator\export_eo.xml'
+    fp = 'export_eo.xml'
     xml_str = addMacroPool(fp)
     macros = parse_atem_macro_xml(xml_str)
     # frames = macros[1].get('frames')
     hold_frames = [macros[1].get('frames')[0]]*30
     frames = macros[0].get('frames') + hold_frames + macros[1].get('frames')
     ani = visualize_atem_macro2(frames)
+    plt.show()
+    # ani.save('GIF_output.gif', fps=30)

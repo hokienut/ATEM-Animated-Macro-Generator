@@ -3,62 +3,13 @@ transition_seconds = 1.5
 transition = 'eo'
 transition_a = 3.0
 
-show_animations = True
+show_animations = False
+save_animations = True
 save_xml = True
 xml_fp = 'export_eo.xml'
 
 frames = fps * transition_seconds
-template = {
-    'start_name':'',
-    'end_name':'',
-    'fillSource':'Color1',
-    'start_source':'Camera3',
-    'end_source':'SuperSource',
-    'boxes':{
-        0:{
-            'source':'Camera2',
-            'start':{
-                'size':0.68,
-                'xPosition':-27,
-                'yPosition':0,
-                'left':0,
-                'top':0,
-                'right':0,
-                'bottom':0,
-            },
-            'end':{
-                'size':0.68,
-                'xPosition':-27,
-                'yPosition':0,
-                'left':0,
-                'top':0,
-                'right':0,
-                'bottom':0,
-            },
-        },
-        1:{
-            'source':'Camera3',
-            'start':{
-                'size':1.0,
-                'xPosition':0,
-                'yPosition':0,
-                'left':0,
-                'top':0,
-                'right':0,
-                'bottom':0,
-            },
-            'end':{
-                'size':0.68,
-                'xPosition':11,
-                'yPosition':0,
-                'left':8,
-                'top':0,
-                'right':8,
-                'bottom':0,
-                },
-        }
-    },
-}
+
 
 MacroID = {
     'size': 'SuperSourceV2BoxSize',
@@ -88,7 +39,7 @@ def output_frames(boxes, i, reverse=False, method='linear', **kwargs):
         for key in b['start']:
             if i == 0:
                 newPos = b['start'][key]
-            elif 'end' in box:
+            elif box.get('end'):
                 newPos = interp(b['start'][key], b['end'][key], frames, i, method=method, **kwargs)
             else:
                 continue
@@ -186,14 +137,20 @@ for index, a in enumerate(animations):
         name = ' --> '.join([a[key] for key in ['start_name', 'end_name']][::-2*reverse+1])
         output += f'{tab*2}<Macro index="{macroNumber + index*2 + reverse}" name="{name}" description="">\n'
 
-        for x in range(0,4):
+        # Enable/ Disable Active Boxes
+        for x in range(4):
             enable_flag = x in a['boxes']
             output += f'{tab*3}<Op id="SuperSourceV2BoxEnable" superSource="0" boxIndex="{x}" enable="{enable_flag}"/>\n'
 
+        # Set Sources for SuperSource Boxes
         for box_i, box in a['boxes'].items():
-            output += f'{tab*3}<Op id="SuperSourceV2BoxInput" superSource="0" boxIndex="{box_i}" input="{box["source"]}"/>\n'
+            # In case setting source by macro is not desired
+            if box.get('source'):
+                output += f'{tab*3}<Op id="SuperSourceV2BoxInput" superSource="0" boxIndex="{box_i}" input="{box["source"]}"/>\n'
 
-        output += f'{tab*3}<Op id="SuperSourceV2ArtFillInput" superSource="0" input="{a["fillSource"]}"/>\n'
+        # Set Fill Source
+        if a.get('fillSource'):
+            output += f'{tab*3}<Op id="SuperSourceV2ArtFillInput" superSource="0" input="{a["fillSource"]}"/>\n'
 
         for i in get_frame_range(frames):
             output += output_frames(a['boxes'], i, reverse=reverse, method=transition, a=transition_a)
@@ -227,11 +184,18 @@ for index, a in enumerate(animations):
 with open(xml_fp,'w') as f:
     f.write(output)
 
-if show_animations:
+if show_animations or save_animations:
     from Edit_ATEM_Macro import addMacroPool, visualize_atem_macro2, parse_atem_macro_xml
     xml_str = addMacroPool(xml_fp)
     macros = parse_atem_macro_xml(xml_str)
     # frames = macros[1].get('frames')
-    hold_frames = [macros[1].get('frames')[0]]*30
+    hold_frames = [macros[1].get('frames')[0]]*fps
     frames = macros[0].get('frames') + hold_frames + macros[1].get('frames')
     ani = visualize_atem_macro2(frames)
+
+    if show_animations:
+        from matplotlib import pyplot as plt
+        plt.show()
+
+    if save_animations:
+        ani.save('GIF_output.gif', fps=30)
