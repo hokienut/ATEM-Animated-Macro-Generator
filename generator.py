@@ -1,5 +1,11 @@
 fps = 30
-transition_seconds = 0.4
+transition_seconds = 1.5
+transition = 'eo'
+transition_a = 3.0
+
+show_animations = True
+save_xml = True
+xml_fp = 'export_eo.xml'
 
 frames = fps * transition_seconds
 template = {
@@ -69,20 +75,27 @@ MacroID = {
 
 # tab = '\t'
 tab = '    '
-def output_frames(boxes, i, method='linear'):
+def output_frames(boxes, i, reverse=False, method='linear', **kwargs):
     output = ''
+    b = dict()
     for box_i, box in boxes.items():
-        for key in box['start']:
+        if reverse and 'end' in box:
+            b['start'] = box['end']
+            b['end'] = box['start']
+        else:
+            b = box
+
+        for key in b['start']:
             if i == 0:
-                newPos = box['start'][key]
+                newPos = b['start'][key]
             elif 'end' in box:
-                newPos = interp(box['start'][key], box['end'][key], frames, i, method=method)
+                newPos = interp(b['start'][key], b['end'][key], frames, i, method=method, **kwargs)
             else:
                 continue
             output += f'{tab*3}<Op id="{MacroID[key]}" superSource="0" boxIndex="{box_i}" {key}="{newPos:0.4f}"/>\n'
     return output
 
-def get_frame_range(frames,reverse):
+def get_frame_range(frames,reverse=False):
     if reverse:
         return reversed(range(0,int(frames)+1))
     return range(0,int(frames)+1)
@@ -93,10 +106,9 @@ move_eqs = {
     'ei': lambda x, a=2: x**a,
     'eo': lambda x, a=2: 1-(1-x)**a
 }
-def interp(start, end, frames, i, method='linear'):
+def interp(start, end, frames, i, method='linear', **kwargs):
     fun = move_eqs.get(method, lambda x: x)
-
-    return start + fun(i/frames) * (end - start)
+    return start + fun(i/frames, **kwargs) * (end - start)
 
 defaults = {
     'start_name': 'ME2',
@@ -106,18 +118,18 @@ defaults = {
     'end_source':'SuperSource',
     'boxes': {
         0:{
-            'size':0.81,
-            'xPosition':7.44,
+            'size':0.85,
+            'xPosition':8.5,
             'yPosition':0,
-            'left':7,
-            'right':7,
+            'left':9,
+            'right':9,
             'top':0,
             'bottom':0,
             },
         1:{
             'size':0.56,
-            'xPosition':-6.13,
-            'yPosition':0,
+            'xPosition':-6.5,
+            'yPosition':1.1,
             'left':2,
             'top':0,
             'right':2,
@@ -150,8 +162,17 @@ animations.append({
         },
         1:{
             'source':'ProdMed 1',
-            'start':defaults['boxes'][1],
-            # 'end':defaults['boxes'][1],  
+            'start':
+            {
+                'size':0.3,
+                'xPosition':-6.5,
+                'yPosition':1.1,
+                'left':2,
+                'top':0,
+                'right':2,
+                'bottom':0,
+            },  
+            'end':defaults['boxes'][1],
         }
     }
 })
@@ -174,30 +195,43 @@ for index, a in enumerate(animations):
 
         output += f'{tab*3}<Op id="SuperSourceV2ArtFillInput" superSource="0" input="{a["fillSource"]}"/>\n'
 
-        for i in  get_frame_range(frames, reverse):
-            output += output_frames(a['boxes'], i)
-            output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
+        for i in get_frame_range(frames):
+            output += output_frames(a['boxes'], i, reverse=reverse, method=transition, a=transition_a)
 
             ## Change Sources
             if i == 0: #After ensuring that the initial frame has been set to avoid jumping around on frame 1. 
-                if not reverse:
-                    output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
-                else:
-                    output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
-                    # Reset the SuperSource to the final position for preview if it's no longer in Program
-                    if a["start_source"] != 'SuperSource':
-                        output += output_frames(a['boxes'], frames)
-                output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
-            
-            if i == frames:
-                if not reverse:
-                    output += f'{tab*3}<Op id="PreviewInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
-                if reverse:
-                    output += f'{tab*3}<Op id="PreviewInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
+                # if reverse:
+                #     output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
+                #     # Reset the SuperSource to the final position for preview if it's no longer in Program
+                #     if a["start_source"] != 'SuperSource':
+                #         output += output_frames(a['boxes'], frames)
+                # else:
+                #     output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
 
-                output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
+                # I can't think of a reason that you would not want the SuperSource
+                # to be in Program on the first frame of a transition if SuperSource is
+                # handling the animation of all the windows.
+                output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
+                # output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
             
+            # this could probably move to outside of the loop since it only runs on the last frame...
+            if i == frames:
+                endPreviewInput = 'SuperSource' if reverse else a['start_source']
+                output += f'{tab*3}<Op id="PreviewInput" mixEffectBlockIndex="0" input="{endPreviewInput}"/>\n'
+                # output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
+            
+            output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
+
         output += f'{tab*2}</Macro>\n'
 
-with open('export2.xml','w') as f:
+with open(xml_fp,'w') as f:
     f.write(output)
+
+if show_animations:
+    from Edit_ATEM_Macro import addMacroPool, visualize_atem_macro2, parse_atem_macro_xml
+    xml_str = addMacroPool(xml_fp)
+    macros = parse_atem_macro_xml(xml_str)
+    # frames = macros[1].get('frames')
+    hold_frames = [macros[1].get('frames')[0]]*30
+    frames = macros[0].get('frames') + hold_frames + macros[1].get('frames')
+    ani = visualize_atem_macro2(frames)
