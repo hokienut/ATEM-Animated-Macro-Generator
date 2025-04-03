@@ -1,3 +1,14 @@
+'''
+    Generator for ATEM Macros
+
+'''
+# ATEM INFO
+Profile = {
+    'majorVersion': '1',
+    'minorVersion': '5',
+    'product': 'ATEM Constellation 8K (4K Mode)'
+}
+
 fps = 30
 transition_seconds = 1.5
 transition = 'eo'
@@ -6,7 +17,7 @@ transition_a = 3.0
 show_animations = False
 save_animations = True
 save_xml = True
-xml_fp = 'export_eo.xml'
+xml_fp = 'export_eo_all.xml'
 
 frames = int(round(fps * transition_seconds))
 
@@ -51,7 +62,7 @@ def interp(start, end, frames, i, method='linear', **kwargs):
         'ei': lambda x, a=2: x**a,
         'eo': lambda x, a=2: 1-(1-x)**a
     }
-    fun = move_eqs.get(method, lambda x: x)
+    fun = move_eqs.get(method, lambda x,a: x)
     return start + fun(i/frames, **kwargs) * (end - start)
 
 defaults = {
@@ -121,8 +132,6 @@ animations.append({
     }
 })
 
-
-
 def generate_macro_pair(a, macroNumber, transition=transition, transition_a=transition_a, frames=frames):
     tab = ' '*4
     output = ''
@@ -148,7 +157,7 @@ def generate_macro_pair(a, macroNumber, transition=transition, transition_a=tran
         for i in range(frames+1):
             output += output_frames(a['boxes'], i, reverse=reverse, method=transition, a=transition_a)
 
-                ## Change Sources
+            ## Change Sources
             if i == 0: #After ensuring that the initial frame has been set to avoid jumping around on frame 1. 
                     # if reverse:
                     #     output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
@@ -160,6 +169,7 @@ def generate_macro_pair(a, macroNumber, transition=transition, transition_a=tran
                     # I can't think of a reason that you would not want the SuperSource
                     # to be in Program on the first frame of a transition if SuperSource is
                     # handling the animation of all the windows.
+
                 output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
                     # output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
                 
@@ -176,20 +186,34 @@ def generate_macro_pair(a, macroNumber, transition=transition, transition_a=tran
 
 if __name__ == '__main__':
     macro_start_number = 88
+    header = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    profile_info = 'majorVersion="1" minorVersion="5" product="ATEM Constellation 8K (4K Mode)"'
+    profile_info = ' '.join([f'{k}="{v}"'for k,v in Profile.items()])
+
     for index, a in enumerate(animations):
         macro_number = macro_start_number + index*2
-        output = generate_macro_pair(a, macro_number, frames)
+        output = generate_macro_pair(a, macro_number)
+
+    tag = 'MacroPool'
+    indent = 1
+    allLines = f'{tab*indent}<{tag}>\n{output}\n{tab*indent}</{tag}>'
+
+    tag = 'Profile'
+    indent = 0
+    allLines = f'{tab*indent}<{tag} {profile_info}>\n{allLines}\n{tab*indent}</{tag}>'
 
     with open(xml_fp,'w') as f:
-        f.write(output)
+        f.write(allLines)
 
     if show_animations or save_animations:
         from Edit_ATEM_Macro import addMacroPool, visualize_atem_macro2, parse_atem_macro_xml
         xml_str = addMacroPool(xml_fp)
         macros = parse_atem_macro_xml(xml_str)
+
         # frames = macros[1].get('frames')
         hold_frames = [macros[1].get('frames')[0]]*fps
         frames = macros[0].get('frames') + hold_frames + macros[1].get('frames')
+
         ani = visualize_atem_macro2(frames)
 
         if show_animations:

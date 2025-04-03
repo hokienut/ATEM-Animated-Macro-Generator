@@ -1,5 +1,3 @@
-# Generated partually with Google's Gemini AI
-
 import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
