@@ -1,5 +1,3 @@
-# Generated partually with Google's Gemini AI
-
 import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -16,6 +14,103 @@ MacroID = {
     }
 MacroVal = {v:k for k,v in MacroID.items()}
 
+class frame():
+    def __init__(self):
+        self.boxes = {}
+
+class box():
+    def __init__(self, xPosition=0, yPosition=0, size=1, left=0, right=0, top=0, bottom=0):
+        self.id = None
+        self.source = None
+        self.enabled = False
+        self.set(xPosition, yPosition, size, left, right, top, bottom)
+
+        # I think these should come from some global variable or Parent or Super class
+        # Basically stating that the screen size should come from a parent class
+        self.scn_size_x = 16*2
+        self.scn_size_y = 9*2
+
+    def __str__(self):
+        return f'xPosition: {self.xPosition}, yPosition: {self.yPosition}, size: {self.size}, left: {self.left}, right: {self.right}, top: {self.top}, bottom: {self.bottom}'
+    
+    def __repr__(self):
+        return f'xPosition: {self.xPosition}, yPosition: {self.yPosition}, size: {self.size}, left: {self.left}, right: {self.right}, top: {self.top}, bottom: {self.bottom}' 
+    
+    def set(self, xPosition=0, yPosition=0, size=1, left=0, right=0, top=0, bottom=0):
+        self.xPosition = xPosition
+        self.yPosition = yPosition
+        self.size = size
+        self.left = left
+        self.right = right
+        self.top = top
+        self.bottom = bottom
+
+    def reset(self):
+        self.xPosition = 0
+        self.yPosition = 0
+        self.size = 1
+        self.left = 0
+        self.right = 0
+        self.top = 0
+        self.bottom = 0
+
+    def update(self, box):
+        self.xPosition = box.xPosition
+        self.yPosition = box.yPosition
+        self.size = box.size
+        self.left = box.left
+        self.right = box.right
+        self.top = box.top
+        self.bottom = box.bottom
+
+    def crop(self, edge, amount=1):
+        if edge == 'left':
+            self.left += amount
+        elif edge == 'right':
+            self.right += amount
+        elif edge == 'top':
+            self.top += amount
+        elif edge == 'bottom': 
+            self.bottom += amount
+    
+    def nudge_size(self, amount=0.05):
+        self.size += amount
+
+    def nudge_position(self, x=1, y=1):
+        self.xPosition += x
+        self.yPosition += y
+
+    def set_position(self, x=1, y=1):
+        self.xPosition = x
+        self.yPosition = y
+
+    def set_size(self, size=1):
+        self.size = size
+
+    def set_mask(self, left=0, right=0, top=0, bottom=0):
+        self.left = left
+        self.right = right
+        self.top = top
+        self.bottom = bottom
+
+    def get_rectangles(self):
+        'Calculate rectangle coordinates for the original box, and the masked box'
+        rect_x = self.xPosition - (self.scn_size_x*self.size / 2)
+        rect_y = self.yPosition - (self.scn_size_y*self.size / 2)
+        rect_width = self.size*self.scn_size_x
+        rect_height = self.size*self.scn_size_y
+
+        'Calculate mask coordinates'
+        mask_x = rect_x + self.left*self.size
+        mask_y = rect_y + self.bottom*self.size
+        mask_width = rect_width - (self.right + self.left)*self.size
+        mask_height = rect_height - (self.bottom + self.top)*self.size
+
+        return {
+            'rect': (rect_x, rect_y, rect_width, rect_height),
+            'mask': (mask_x, mask_y, mask_width, mask_height)},
+
+    
 def parse_atem_macro_xml(xml_string):
     """
     Parses an ATEM macro XML string and extracts SuperSource box positions, sizes, and masks.
@@ -43,8 +138,9 @@ def parse_atem_macro_xml(xml_string):
                 key = MacroVal.get(op_id)
                 if box_index is not None:
                     if box_index not in current_frame:
-                                current_frame[box_index] = {}
+                        current_frame[box_index] = {}
                     current_frame[box_index][key] = float(op_element.get(key))
+                    
             elif op_id == "MacroSleep":
                 frames.append(current_frame.copy())
                 current_frame = {} # Reset current frame
