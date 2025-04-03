@@ -6,20 +6,20 @@
 Profile = {
     'majorVersion': '1',
     'minorVersion': '5',
-    'product': 'ATEM Constellation 8K (4K Mode)'
-}
+    'product': 'ATEM Constellation 8K (4K Mode)'}
 
-fps = 30
-transition_seconds = 1.5
-transition = 'eo'
-transition_a = 3.0
+SS = '0'
+FPS = 30
+TRANSITION_SEC = 1.5
+TRANSITION_METHOD = 'eo'
+TRANSITION_A = 3.0
 
 show_animations = False
 save_animations = True
 save_xml = True
 xml_fp = 'export_eo_all.xml'
 
-frames = int(round(fps * transition_seconds))
+frames = int(round(FPS * TRANSITION_SEC))
 
 MacroID = {
     'size': 'SuperSourceV2BoxSize',
@@ -52,7 +52,7 @@ def output_frames(boxes, i, reverse=False, method='linear', **kwargs):
                 newPos = interp(b['start'][key], b['end'][key], frames, i, method=method, **kwargs)
             else:
                 continue
-            output += f'{tab*3}<Op id="{MacroID[key]}" superSource="0" boxIndex="{box_i}" {key}="{newPos:0.4f}"/>\n'
+            output += f'{tab*3}<Op id="{MacroID[key]}" superSource="{SS}" boxIndex="{box_i}" {key}="{newPos:0.6f}"/>\n'
     return output
         
 def interp(start, end, frames, i, method='linear', **kwargs):
@@ -132,7 +132,7 @@ animations.append({
     }
 })
 
-def generate_macro_pair(a, macroNumber, transition=transition, transition_a=transition_a, frames=frames):
+def generate_macro_pair(a, macroNumber, transition=TRANSITION_METHOD, transition_a=TRANSITION_A, frames=frames):
     tab = ' '*4
     output = ''
     for reverse in range(2):
@@ -211,7 +211,7 @@ if __name__ == '__main__':
         macros = parse_atem_macro_xml(xml_str)
 
         # frames = macros[1].get('frames')
-        hold_frames = [macros[1].get('frames')[0]]*fps
+        hold_frames = [macros[1].get('frames')[0]]*FPS*1
         frames = macros[0].get('frames') + hold_frames + macros[1].get('frames')
 
         ani = visualize_atem_macro2(frames)

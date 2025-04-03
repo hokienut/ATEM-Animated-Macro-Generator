@@ -12,7 +12,11 @@ MacroID = {
     'right': 'SuperSourceV2BoxMaskRight',
     'bottom': 'SuperSourceV2BoxMaskBottom'
     }
+
 MacroVal = {v:k for k,v in MacroID.items()}
+
+SCRN_SIZE_X = 16*2
+SCRN_SIZE_Y = 9*2
 
 def parse_atem_macro_xml(xml_string):
     """
@@ -62,14 +66,19 @@ def visualize_atem_macro2(frames):
     fig.tight_layout()
     
     alpha = {'rect':0.1, 'mask':1.0}
-    boxes = [{key: patches.Rectangle((0,0),0,0,linewidth=1,color=f'C{i}',alpha=alpha[key],zorder=4-i) for key in ['rect','mask']} for i in range(4)]
+    boxes = [{key: patches.Rectangle((0,0),0,0,
+                                     linewidth=1,
+                                     color=f'C{i}',
+                                     alpha=alpha[key],
+                                     zorder=4-i) 
+                                     for key in ['rect','mask']} for i in range(4)]
     
     for box in boxes:
         for art in box.values():
             ax.add_patch(art)
     
-    size_x = 16*2
-    size_y = 9*2
+    size_x = SCRN_SIZE_X
+    size_y = SCRN_SIZE_Y
     
     ax.set_xlim(-size_x/2,size_x/2)  # Adjust based on your xPosition values
     ax.set_ylim(-size_y/2,size_y/2)  # Adjust based on your yPosition values
@@ -102,11 +111,6 @@ def visualize_atem_macro2(frames):
             # Draw the rectangles
             boxes[box_index]['rect'].set_bounds(rect_x, rect_y, rect_width, rect_height)
             boxes[box_index]['mask'].set_bounds(mask_x, mask_y, mask_width, mask_height)
-            # box[box_index]['rect'] = patches.Rectangle((rect_x, rect_y), rect_width, rect_height, linewidth=1, edgecolor=c, facecolor=c, alpha=.3)
-            # box[box_index]['mask'] = patches.Rectangle((mask_x, mask_y), mask_width, mask_height, linewidth=1, edgecolor=c2, facecolor=c2, alpha=.8)
-            
-            # for art in box[box_index].values():
-            #     ax.add_patch(art)
                 
     ani = animation.FuncAnimation(fig, update, frames=len(frames), interval=1000/30, repeat_delay=2000)
     # plt.show()
