@@ -1,21 +1,21 @@
 '''
     Generator for ATEM Macros
-
 '''
 # ATEM INFO
 Profile = {
-    'majorVersion': '1',
-    'minorVersion': '5',
-    'product': 'ATEM Constellation 8K (4K Mode)'}
+    'majorVersion': '2',
+    'minorVersion': '0',
+    'product': 'ATEM 4 M/E Constellation HD'}
 
 SS = '0'
 FPS = 30
 TRANSITION_SEC = 1.5
 TRANSITION_METHOD = 'eo'
 TRANSITION_A = 3.0
+MACRO_START_NUM = 88
 
 show_animations = False
-save_animations = True
+save_animations = False
 save_xml = True
 xml_fp = 'export_eo_all.xml'
 
@@ -106,17 +106,17 @@ animations = []
 animations.append({
     'start_name': 'ME2',
     'end_name': '2Box',
-    'fillSource': 'ProdMed 2',
-    'start_source':'ME2',
+    'fillSource': 'Camera12',
+    'start_source':'Camera14',
     'end_source':'SuperSource',
     'boxes':{
         0:{
-            'source':'ME2',
+            'source':'Camera14',
             'start':fullScreen,
             'end':defaults['boxes'][0],    
         },
         1:{
-            'source':'ProdMed 1',
+            'source':'Camera12',
             'start':
             {
                 'size':0.3,
@@ -185,14 +185,13 @@ def generate_macro_pair(a, macroNumber, transition=TRANSITION_METHOD, transition
     return output
 
 if __name__ == '__main__':
-    macro_start_number = 88
     header = '<?xml version="1.0" encoding="UTF-8"?>\n'
     profile_info = 'majorVersion="1" minorVersion="5" product="ATEM Constellation 8K (4K Mode)"'
     profile_info = ' '.join([f'{k}="{v}"'for k,v in Profile.items()])
 
     for index, a in enumerate(animations):
-        macro_number = macro_start_number + index*2
-        output = generate_macro_pair(a, macro_number)
+        macro_number = MACRO_START_NUM + index*2
+        output = header + generate_macro_pair(a, macro_number)
 
     tag = 'MacroPool'
     indent = 1
