@@ -2,7 +2,7 @@
     Generator for ATEM Macros
 '''
 # ATEM INFO
-Profile = {
+PROFILE = {
     'majorVersion': '2',
     'minorVersion': '0',
     'product': 'ATEM 4 M/E Constellation HD'}
@@ -12,12 +12,13 @@ FPS = 30
 TRANSITION_SEC = 1.5
 TRANSITION_METHOD = 'eo'
 TRANSITION_A = 3.0
-MACRO_START_NUM = 88
+MACRO_START_NUM = 6
+ME=0 # (x-1)
 
-show_animations = False
+show_animations = True
 save_animations = False
 save_xml = True
-xml_fp = 'export_eo_all.xml'
+xml_fp = 'macro_export.xml'
 
 frames = int(round(FPS * TRANSITION_SEC))
 
@@ -106,17 +107,19 @@ animations = []
 animations.append({
     'start_name': 'ME2',
     'end_name': '2Box',
-    'fillSource': 'Camera12',
-    'start_source':'Camera14',
+    'fillSource': 'Camera12', #Prod Med 2
+    'start_source':'Camera14', #ME2: Must be a mix effect source to vary input.  this also means we need to start mixing on ME2
     'end_source':'SuperSource',
     'boxes':{
         0:{
-            'source':'Camera14',
+            'source':'Camera14', #ME2
             'start':fullScreen,
             'end':defaults['boxes'][0],    
         },
         1:{
-            'source':'Camera12',
+            # source = ME3? - to allow for switching between PMed 1, FOH Med, and LED wall
+            # Could accomplish this with a macro and leave it blank here to take existing source.
+            # 'source':'Camera15', 
             'start':
             {
                 'size':0.3,
@@ -144,13 +147,12 @@ def generate_macro_pair(a, macroNumber, transition=TRANSITION_METHOD, transition
             enable_flag = x in a['boxes']
             output += f'{tab*3}<Op id="SuperSourceV2BoxEnable" superSource="0" boxIndex="{x}" enable="{enable_flag}"/>\n'
 
-            # Set Sources for SuperSource Boxes
+            # Set Sources for SuperSource Boxes - skips if blank or None
         for box_i, box in a['boxes'].items():
-                # In case setting source by macro is not desired
             if box.get('source'):
                 output += f'{tab*3}<Op id="SuperSourceV2BoxInput" superSource="0" boxIndex="{box_i}" input="{box["source"]}"/>\n'
 
-            # Set Fill Source
+            # Set Fill Source - skips if left blank or None
         if a.get('fillSource'):
             output += f'{tab*3}<Op id="SuperSourceV2ArtFillInput" superSource="0" input="{a["fillSource"]}"/>\n'
 
@@ -158,40 +160,32 @@ def generate_macro_pair(a, macroNumber, transition=TRANSITION_METHOD, transition
             output += output_frames(a['boxes'], i, reverse=reverse, method=transition, a=transition_a)
 
             ## Change Sources
-            if i == 0: #After ensuring that the initial frame has been set to avoid jumping around on frame 1. 
-                    # if reverse:
-                    #     output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="{a["start_source"]}"/>\n'
-                    #     # Reset the SuperSource to the final position for preview if it's no longer in Program
-                    #     if a["start_source"] != 'SuperSource':
-                    #         output += output_frames(a['boxes'], frames)
-                    # else:
-                    #     output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
-                    # I can't think of a reason that you would not want the SuperSource
-                    # to be in Program on the first frame of a transition if SuperSource is
-                    # handling the animation of all the windows.
+            if i == 0 and not reverse: #After ensuring that the initial frame has been set to avoid jumping around on frame 1. not necessary for reverse (already on ss)
+                output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="{ME}" input="SuperSource"/>\n'
 
-                output += f'{tab*3}<Op id="ProgramInput" mixEffectBlockIndex="0" input="SuperSource"/>\n'
-                    # output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
-                
-                # this could probably move to outside of the loop since it only runs on the last frame...
-            if i == frames:
-                endPreviewInput = 'SuperSource' if reverse else a['start_source']
-                output += f'{tab*3}<Op id="PreviewInput" mixEffectBlockIndex="0" input="{endPreviewInput}"/>\n'
-                    # output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
-                
             output += f'{tab*3}<Op id="MacroSleep" frames="1"/>\n'
 
-        output += f'{tab*2}</Macro>\n'
+        if reverse:
+            endInputs = {'PreviewInput':a['end_source'], 'ProgramInput':a['start_source']}
+        else:
+            endInputs = {'PreviewInput':a['start_source']}
+        for kind, input in endInputs.items():
+            output += f'{tab*3}<Op id="{kind}" mixEffectBlockIndex="{ME}" input="{input}"/>\n'
+
+        # at the end of the reverse transition, set the supersource back to the layout it started with
+        if reverse and endInputs.get('ProgramInput') != 'SuperSource':
+            output += output_frames(a['boxes'], frames)
+
+        output += f'{tab*2}</Macro>'
     return output
 
 if __name__ == '__main__':
     header = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    profile_info = 'majorVersion="1" minorVersion="5" product="ATEM Constellation 8K (4K Mode)"'
-    profile_info = ' '.join([f'{k}="{v}"'for k,v in Profile.items()])
+    profile_info = ' '.join([f'{k}="{v}"'for k,v in PROFILE.items()])
 
     for index, a in enumerate(animations):
         macro_number = MACRO_START_NUM + index*2
-        output = header + generate_macro_pair(a, macro_number)
+        output = generate_macro_pair(a, macro_number)
 
     tag = 'MacroPool'
     indent = 1
@@ -201,13 +195,15 @@ if __name__ == '__main__':
     indent = 0
     allLines = f'{tab*indent}<{tag} {profile_info}>\n{allLines}\n{tab*indent}</{tag}>'
 
+    allLines = header + allLines
+
     with open(xml_fp,'w') as f:
         f.write(allLines)
 
     if show_animations or save_animations:
         from Edit_ATEM_Macro import addMacroPool, visualize_atem_macro2, parse_atem_macro_xml
-        xml_str = addMacroPool(xml_fp)
-        macros = parse_atem_macro_xml(xml_str)
+        # xml_str = addMacroPool(xml_fp)
+        macros = parse_atem_macro_xml(allLines)
 
         # frames = macros[1].get('frames')
         hold_frames = [macros[1].get('frames')[0]]*FPS*1
