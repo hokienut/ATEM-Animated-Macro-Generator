@@ -25,8 +25,8 @@ def parse_atem_macro_xml(xml_string):
     Args:
         xml_string (str): The XML string representing the ATEM macro.
 
-    Returns: [macros {index, name, description, frames:[]]
-        list: A list of dictionaries, where each dictionary contains a macro info and frames which is
+    Returns: [macros {index, name, description, frames:[{...}]]
+        list: A list of dictionaries, where each dictionary contains macro info and frames which is
               a list of dictionaries, where each dictionary represents a frame of the animation.
               Each frame dictionary contains box information (xPosition, yPosition, size, masks)
               for each box (0-3).
