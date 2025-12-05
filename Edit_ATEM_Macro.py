@@ -117,16 +117,23 @@ def visualize_atem_macro2(frames):
     return ani
         
 def addMacroPool(fp):
-    with open(fp, 'r') as f:
-        allLines = f.read()
+    allLines = readMacro(fp)
     tag = 'MacroPool'
     allLines = f'{" "*4}<{tag}>\n{allLines}\n{" "*4}</{tag}>'
     return allLines
 
+def readMacro(fp):
+    with open(fp, 'r') as f:
+         allLines = f.read()
+    return allLines
+
 if __name__ == '__main__':
     # fp = r'C:\Local Repo\ATEM-Animated-Macro-Generator\export_eo.xml'
-    fp = 'export_eo.xml'
-    xml_str = addMacroPool(fp)
+    # fp = 'export_eo.xml'
+    fp = 'macro_export.xml'
+    # xml_str = addMacroPool(fp)
+    xml_str = readMacro(fp)
+
     macros = parse_atem_macro_xml(xml_str)
     # frames = macros[1].get('frames')
     hold_frames = [macros[1].get('frames')[0]]*30
